@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Financial Accounting Planner</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#667085;--bd:#dde1e7;--ac:#2f6fed;--bar:#c9d6f2;--me:#e0552f;--ok:#1a7f4b;--bad:#c0392b;--hl:#e8f0ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171c;--card:#1d2128;--tx:#e8eaee;--mut:#9aa3b2;--bd:#323944;--ac:#6b9bff;--bar:#34456b;--me:#ff8a65;--ok:#4cc38a;--bad:#ff7b6b;--hl:#22314f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14171c;--card:#1d2128;--tx:#e8eaee;--mut:#9aa3b2;--bd:#323944;--ac:#6b9bff;--bar:#34456b;--me:#ff8a65;--ok:#4cc38a;--bad:#ff7b6b;--hl:#22314f;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+input,select{width:100%;box-sizing:border-box;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:15px}
+.big{font-size:30px;font-weight:700}
+.sub{color:var(--mut);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--bd)}
+tr.p td{background:var(--hl);font-weight:600}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+details summary{cursor:pointer;color:var(--ac);font-size:14px}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--mut);font-size:11px}
+</style></head><body><main>
+<h1>Financial Accounting Planner</h1>
+
+<div class="card"><div class="grid">
+<div><label>Midterm marks</label><input id="mid" type="number" value="62"></div>
+<div><label>Midterm total marks (set this)</label><input id="midT" type="number" value="120"></div>
+<div><label>Your overall quiz score, all quizzes (%)</label><input id="quiz" type="number" value="70"></div>
+<div><label>CP quartile</label><select id="cpq"><option value="0">Q1 (top)</option><option value="1" selected>Q2</option><option value="2">Q3</option><option value="3">Q4 (bottom)</option></select></div>
+</div></div>
+
+<div class="card" id="res"></div>
+
+<div class="card"><b>Where you stand now</b>
+<div class="sub">Poll of 22 classmates: current overall grade (midterm + 3 quizzes)</div>
+<svg id="chart" viewBox="0 0 600 230"></svg></div>
+
+<div class="card"><b>Grade ladder</b>
+<table><thead><tr><th>Grade</th><th>Total needed</th><th>Final needed</th></tr></thead><tbody id="rows"></tbody></table></div>
+
+<details class="card"><summary>Assumptions (editable)</summary>
+<p class="sub">Weights: CP 30, quizzes 25, midterm 20, final 25. Poll mean and spread come from the 22 votes. Cutoffs are estimated from a projected class total; type your own in the override boxes if you know them.</p>
+<div class="grid">
+<div><label>Poll mean (%)</label><input id="pm" type="number" value="55"></div>
+<div><label>Poll std dev</label><input id="ps" type="number" value="16"></div>
+<div><label>Class avg CP (%)</label><input id="cpm" type="number" value="85"></div>
+<div><label>Class avg of all quizzes (%)</label><input id="rqm" type="number" value="60"></div>
+<div><label>Class midterm avg (marks)</label><input id="mm" type="number" value="62"></div>
+<div><label>Class avg final (%)</label><input id="fm" type="number" value="55"></div>
+<div><label>Class total std dev</label><input id="tsd" type="number" value="11"></div>
+<div><label>HP cutoff override</label><input id="oHP" type="number"></div>
+<div><label>P+ cutoff override</label><input id="oP1" type="number"></div>
+<div><label>P cutoff override</label><input id="oP" type="number"></div>
+<div><label>P- cutoff override</label><input id="oP2" type="number"></div>
+<div><label>CP Q1 → %</label><input id="q0" type="number" value="95"></div>
+<div><label>CP Q2 → %</label><input id="q1" type="number" value="85"></div>
+<div><label>CP Q3 → %</label><input id="q2" type="number" value="75"></div>
+<div><label>CP Q4 → %</label><input id="q3" type="number" value="65"></div>
+</div></details>
+
+<script>
+const $=id=>document.getElementById(id), n=id=>parseFloat($(id).value)||0;
+const erf=x=>{const s=Math.sign(x);x=Math.abs(x);const t=1/(1+0.3275911*x);return s*(1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x))};
+const cdf=z=>0.5*(1+erf(z/Math.SQRT2));
+const BINS=[[10,20,.5],[20,25,0],[25,30,0],[30,35,1],[35,40,2],[40,45,3],[45,50,2],[50,55,1],[55,60,3],[60,65,3],[65,70,1],[70,80,2.5]];
+function chart(me,m,s){
+ const X=v=>30+(Math.min(95,Math.max(5,v))-5)/90*550, Y=v=>195-v/3.6*170;
+ let h='';
+ BINS.forEach(([a,b,c])=>{h+=`<rect x="${X(a)}" y="${Y(c)}" width="${X(b)-X(a)-1}" height="${195-Y(c)}" fill="var(--bar)"/>`});
+ let pts=[];for(let v=5;v<=95;v+=1)pts.push(X(v)+','+Y(22*5*Math.exp(-0.5*((v-m)/s)**2)/(s*Math.sqrt(2*Math.PI))));
+ const pe=Math.max(5,Math.min(95,me));
+ let sh=[X(5)+',195'];for(let v=5;v<=pe;v+=1)sh.push(X(v)+','+Y(22*5*Math.exp(-0.5*((v-m)/s)**2)/(s*Math.sqrt(2*Math.PI))));
+ sh.push(X(pe)+',195');
+ h+=`<polygon points="${sh.join(' ')}" fill="var(--ac)" opacity=".25"/><polyline points="${pts.join(' ')}" fill="none" stroke="var(--ac)" stroke-width="2.5"/>`;
+ h+=`<line x1="${X(m)}" x2="${X(m)}" y1="25" y2="195" stroke="var(--mut)" stroke-dasharray="4 3"/><text x="${X(m)+4}" y="38">mean ${m}%</text>`;
+ const tx=X(me)>470?'end':'start',off=tx==='end'?-4:4;
+ h+=`<line x1="${X(me)}" x2="${X(me)}" y1="15" y2="195" stroke="var(--me)" stroke-width="2.5"/><text x="${X(me)+off}" y="14" text-anchor="${tx}" style="fill:var(--me);font-weight:700;font-size:13px">You ${me.toFixed(1)}%</text>`;
+ h+=`<line x1="30" x2="580" y1="195" y2="195" stroke="var(--bd)"/>`;
+ for(let v=10;v<=90;v+=10)h+=`<text x="${X(v)}" y="212" text-anchor="middle">${v}%</text>`;
+ $('chart').innerHTML=h;
+}
+function calc(){
+ const midPct=n('mid')/(n('midT')||1)*100, cp=n('q'+$('cpq').value), qd=n('quiz');
+ const cur=(midPct*.20+qd*.15)/.35;
+ const pts=midPct*.20+qd*.25+cp*.30;
+ const M=.20*(n('mm')/(n('midT')||1)*100)+.25*n('rqm')+.30*n('cpm')+.25*n('fm'), S=n('tsd');
+ const cut={HP:[1.2816,'oHP'],'P+':[0.5244,'oP1'],P:[-0.3853,'oP'],'P-':[-1.2816,'oP2']};
+ const need=c=>{const x=(c-pts)/.25;if(x<=0)return{t:'Secured',c:'ok'};if(x>100)return{t:'Out of reach',c:'bad'};return{t:x.toFixed(1)+'% of final',c:''}};
+ let rows='',pc=null;
+ for(const g in cut){const [z,id]=cut[g],est=M+z*S;$(id).placeholder=est.toFixed(1);const c=$(id).value!==''?n(id):est;const r=need(c);if(g==='P')pc=r;
+  rows+=`<tr class="${g==='P'?'p':''}"><td>${g}</td><td>${c.toFixed(1)}%</td><td class="${r.c}">${r.t}</td></tr>`}
+ $('rows').innerHTML=rows;
+ const pct=cdf((cur-n('pm'))/(n('ps')||1))*100;
+ $('res').innerHTML=`<div class="sub">To secure P you need in the final</div><div class="big ${pc.c}">${pc.t}</div>
+ <div class="sub">Current overall (midterm + 3 quizzes): <b>${cur.toFixed(1)}%</b>, roughly the ${pct.toFixed(0)}th percentile of the poll. Points banked: ${pts.toFixed(1)} of 75 (final adds up to 25).</div>`;
+ chart(cur,n('pm'),n('ps')||1);
+}
+document.querySelectorAll('input,select').forEach(e=>e.addEventListener('input',calc));
+calc();
+</script></main></body></html>
